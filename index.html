@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>beforeClick - Phishing Risk Analyzer</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
+</head>
+<body>
+    <!-- Unique Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <div class="logo-container">
+                    <div class="logo-icon">🔍</div>
+                    <h1 class="app-name">BeforeClick</h1>
+                </div>
+                <p class="tagline">Professional Phishing Risk Analysis & Threat Intelligence</p>
+            </div>
+            <div class="header-right">
+                <div class="risk-indicator">
+                    <span class="risk-label">Risk Score</span>
+                    <div class="risk-meter">
+                        <div class="risk-bar" id="headerRiskBar"></div>
+                    </div>
+                    <span class="risk-value" id="headerRiskValue">0%</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-wave"></div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Tab Navigation -->
+        <nav class="tabs-navigation">
+            <button class="tab-btn active" data-tab="action-type">
+                <span class="tab-icon">⚡</span>
+                <span class="tab-text">Action Type</span>
+            </button>
+            <button class="tab-btn" data-tab="permissions">
+                <span class="tab-icon">🔐</span>
+                <span class="tab-text">Permissions</span>
+            </button>
+            <button class="tab-btn" data-tab="cookies">
+                <span class="tab-icon">🍪</span>
+                <span class="tab-text">Cookies</span>
+            </button>
+            <button class="tab-btn" data-tab="terms">
+                <span class="tab-icon">📋</span>
+                <span class="tab-text">Terms & Conditions</span>
+            </button>
+            <button class="tab-btn" data-tab="ssl">
+                <span class="tab-icon">🔒</span>
+                <span class="tab-text">SSL Data</span>
+            </button>
+            <button class="tab-btn" data-tab="history">
+                <span class="tab-icon">📜</span>
+                <span class="tab-text">Analysis History</span>
+            </button>
+        </nav>
+
+        <!-- Tab Contents -->
+        <div class="tabs-container">
+            <!-- 1. Action Type Tab -->
+            <div class="tab-content active" id="action-type">
+                <div class="tab-header">
+                    <h2>⚡ Action Type Analysis</h2>
+                    <p>Comprehensive assessment of requested website actions and behavior patterns</p>
+                </div>
+                <form class="analysis-form" id="action-type-form">
+                    <div class="form-group">
+                        <label for="hackathon-selector">🎯 Hackathon / Competition</label>
+                        <select id="hackathon-selector" class="select-field">
+                            <option value="">-- Select Event --</option>
+                            <option value="hack-2024">HackIT 2024</option>
+                            <option value="cyber-shield">CyberShield Summit 2024</option>
+                            <option value="innovation-hub">Innovation Hub Challenge</option>
+                            <option value="security-conf">Security Conference 2024</option>
+                            <option value="other">Other / Demo</option>
+                        </select>
+                        <span class="form-hint">Select your hackathon or competition event</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="action-url">Website URL</label>
+                        <input type="url" id="action-url" class="input-field" placeholder="https://example.com" required onblur="checkActionURLWithVirusTotal(this.value)">
+                        <span class="form-hint">Enter the complete URL of the website you want to analyze</span>
+                    </div>
+
+                    <!-- VirusTotal Results Section -->
+                    <div id="vt-results-action" class="vt-results-container hidden">
+                        <div class="vt-card">
+                            <h3>🔍 VirusTotal Scan Results</h3>
+                            <p style="color: #666; font-size: 13px; margin: 10px 0;">Real-time threat detection from leading antivirus and security vendors</p>
+                            <div class="vt-stats">
+                                <div class="vt-stat">
+                                    <span class="vt-label">Malicious</span>
+                                    <span class="vt-value vt-malicious" id="vt-malicious-action" style="color: #d32f2f;">-</span>
+                                </div>
+                                <div class="vt-stat">
+                                    <span class="vt-label">Suspicious</span>
+                                    <span class="vt-value vt-suspicious" id="vt-suspicious-action" style="color: #ff9800;">-</span>
+                                </div>
+                                <div class="vt-stat">
+                                    <span class="vt-label">Clean</span>
+                                    <span class="vt-value vt-undetected" id="vt-undetected-action" style="color: #4caf50;">-</span>
+                                </div>
+                                <div class="vt-stat">
+                                    <span class="vt-label">Detection Ratio</span>
+                                    <span class="vt-value vt-ratio" id="vt-ratio-action" style="font-weight: bold; color: #6366f1;">-</span>
+                                </div>
+                            </div>
+                            <div class="vt-vendors" id="vt-vendors-action"></div>
+                        </div>
+                    </div>
+
+                    <!-- Domain Age Results Section -->
+                    <div id="domain-age-results" class="domain-age-container hidden">
+                        <div class="domain-card">
+                            <h3>📅 Domain Information & Age</h3>
+                            <div class="domain-stats">
+                                <div class="domain-stat">
+                                    <span class="domain-label">Domain Age</span>
+                                    <span class="domain-value" id="domain-age-years">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Creation Date</span>
+                                    <span class="domain-value" id="domain-created-date">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Expiration Date</span>
+                                    <span class="domain-value" id="domain-expiry-date">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Registrar</span>
+                                    <span class="domain-value" id="domain-registrar">-</span>
+                                </div>
+                            </div>
+                            <div class="domain-details" id="domain-details"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="action-select">Select Action Type</label>
+                        <select id="action-select" class="select-field">
+                            <option value="">-- Choose an action --</option>
+                            <option value="share_otp">Share OTP / Credentials</option>
+                            <option value="make_permission">Request Permission</option>
+                            <option value="grant_permission">Grant Permission</option>
+                            <option value="financial_transaction">Financial Transaction</option>
+                            <option value="file_upload">File Upload</option>
+                            <option value="account_verification">Account Verification</option>
+                            <option value="payment_info">Payment Information</option>
+                        </select>
+                        <span class="form-hint">Select the type of action the website is requesting</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="action-notes">Additional Notes (Optional)</label>
+                        <textarea id="action-notes" class="textarea-field" placeholder="Describe any suspicious behavior or additional context..." rows="5"></textarea>
+                        <span class="form-hint">Add any observations about the website's behavior</span>
+                    </div>
+
+                    <button type="submit" class="btn-analyze">Analyze Action Type</button>
+                </form>
+
+                <div id="action-results" class="results-container hidden" style="margin-top: 30px; margin-bottom: 30px;">
+                    <div class="result-card" style="border: 3px solid #6366f1; background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05)); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);">
+                        <h3 style="color: #6366f1; font-size: 22px; margin-bottom: 20px;">✅ Analysis Results</h3>
+                        <div class="result-item" style="padding: 20px; background: white; border-radius: 8px; margin-bottom: 15px;">
+                            <span class="result-label" style="font-size: 16px; font-weight: bold; color: #333;">🎯 Risk Assessment:</span>
+                            <span class="result-value" id="action-risk" style="font-weight: bold; font-size: 28px; color: #6366f1; display: block; margin-top: 10px;">Pending</span>
+                        </div>
+                        <div class="result-item" style="padding: 20px; background: white; border-radius: 8px;">
+                            <span class="result-label" style="font-size: 16px; font-weight: bold; color: #333; display: block; margin-bottom: 15px;">📋 Detailed Analysis & Recommendations:</span>
+                            <div class="result-value" id="action-recommendations" style="margin-top: 15px; text-align: left; white-space: pre-wrap; word-wrap: break-word; color: #333; line-height: 1.8; font-size: 14px;">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Permissions Tab -->
+            <div class="tab-content" id="permissions">
+                <div class="tab-header">
+                    <h2>🔐 Permissions Analysis</h2>
+                    <p>Check what permissions the website is requesting</p>
+                </div>
+                <form class="analysis-form">
+                    <div class="form-group">
+                        <label for="permissions-url">Website URL</label>
+                        <input type="url" id="permissions-url" class="input-field" placeholder="https://example.com" required onblur="checkDomainAgeForTab(this.value, 'permissions-domain-age')">
+                        <span class="form-hint">Enter the website URL</span>
+                    </div>
+
+                    <!-- Domain Age Results -->
+                    <div id="permissions-domain-age" class="domain-age-container hidden">
+                        <div class="domain-card">
+                            <h3>📅 Domain Information & Age</h3>
+                            <div class="domain-stats">
+                                <div class="domain-stat">
+                                    <span class="domain-label">Domain Age</span>
+                                    <span class="domain-value" id="permissions-domain-age-years">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Creation Date</span>
+                                    <span class="domain-value" id="permissions-domain-created-date">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Expiration Date</span>
+                                    <span class="domain-value" id="permissions-domain-expiry-date">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Registrar</span>
+                                    <span class="domain-value" id="permissions-domain-registrar">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="permissions-grid">
+                        <label class="permission-checkbox">
+                            <input type="checkbox" class="perm-check" data-permission="camera">
+                            <span class="checkbox-label">📷 Camera Access</span>
+                        </label>
+                        <label class="permission-checkbox">
+                            <input type="checkbox" class="perm-check" data-permission="microphone">
+                            <span class="checkbox-label">🎤 Microphone Access</span>
+                        </label>
+                        <label class="permission-checkbox">
+                            <input type="checkbox" class="perm-check" data-permission="location">
+                            <span class="checkbox-label">📍 Location Access</span>
+                        </label>
+                        <label class="permission-checkbox">
+                            <input type="checkbox" class="perm-check" data-permission="files">
+                            <span class="checkbox-label">📁 File Access</span>
+                        </label>
+                        <label class="permission-checkbox">
+                            <input type="checkbox" class="perm-check" data-permission="contacts">
+                            <span class="checkbox-label">👥 Contacts Access</span>
+                        </label>
+                        <label class="permission-checkbox">
+                            <input type="checkbox" class="perm-check" data-permission="clipboard">
+                            <span class="checkbox-label">📋 Clipboard Access</span>
+                        </label>
+                        <label class="permission-checkbox">
+                            <input type="checkbox" class="perm-check" data-permission="notifications">
+                            <span class="checkbox-label">🔔 Notification Access</span>
+                        </label>
+                        <label class="permission-checkbox">
+                            <input type="checkbox" class="perm-check" data-permission="storage">
+                            <span class="checkbox-label">💾 Storage Access</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-analyze">Check Permissions Risk</button>
+                </form>
+
+                <div id="permissions-results" class="results-container hidden">
+                    <div class="result-card">
+                        <h3>Permission Risk Assessment</h3>
+                        <div id="permissions-risk-items"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Cookies Tab -->
+            <div class="tab-content" id="cookies">
+                <div class="tab-header">
+                    <h2>🍪 Cookies Analysis</h2>
+                    <p>Analyze cookies being used by the website</p>
+                </div>
+                <form class="analysis-form">
+                    <div class="form-group">
+                        <label for="cookies-text">Paste Cookie Data</label>
+                        <textarea id="cookies-text" class="textarea-field" placeholder="Paste the complete cookie data here (from browser developer tools - Network/Application tab)..." rows="10"></textarea>
+                        <span class="form-hint">You can find cookies in Developer Tools > Application/Storage > Cookies</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cookies-url">Associated Website URL (Optional)</label>
+                        <input type="url" id="cookies-url" class="input-field" placeholder="https://example.com" onblur="checkDomainAgeForTab(this.value, 'cookies-domain-age')">
+                    </div>
+
+                    <!-- Domain Age Results -->
+                    <div id="cookies-domain-age" class="domain-age-container hidden">
+                        <div class="domain-card">
+                            <h3>📅 Domain Information & Age</h3>
+                            <div class="domain-stats">
+                                <div class="domain-stat">
+                                    <span class="domain-label">Domain Age</span>
+                                    <span class="domain-value" id="cookies-domain-age-years">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Creation Date</span>
+                                    <span class="domain-value" id="cookies-domain-created-date">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Expiration Date</span>
+                                    <span class="domain-value" id="cookies-domain-expiry-date">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Registrar</span>
+                                    <span class="domain-value" id="cookies-domain-registrar">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-analyze">Analyze Cookies</button>
+                </form>
+
+                <div id="cookies-results" class="results-container hidden">
+                    <div class="result-card">
+                        <h3>Cookie Analysis Results</h3>
+                        <div id="cookies-risk-items"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Terms & Conditions Tab -->
+            <div class="tab-content" id="terms">
+                <div class="tab-header">
+                    <h2>📋 Terms & Conditions Analysis</h2>
+                    <p>Scan for suspicious clauses and hidden risks</p>
+                </div>
+                <form class="analysis-form">
+                    <div class="form-group">
+                        <label for="terms-url">Website URL</label>
+                        <input type="url" id="terms-url" class="input-field" placeholder="https://example.com/terms" onblur="checkDomainAgeForTab(this.value, 'terms-domain-age')">
+                        <span class="form-hint">URL where the T&C document is located</span>
+                    </div>
+
+                    <!-- Domain Age Results -->
+                    <div id="terms-domain-age" class="domain-age-container hidden">
+                        <div class="domain-card">
+                            <h3>📅 Domain Information & Age</h3>
+                            <div class="domain-stats">
+                                <div class="domain-stat">
+                                    <span class="domain-label">Domain Age</span>
+                                    <span class="domain-value" id="terms-domain-age-years">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Creation Date</span>
+                                    <span class="domain-value" id="terms-domain-created-date">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Expiration Date</span>
+                                    <span class="domain-value" id="terms-domain-expiry-date">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Registrar</span>
+                                    <span class="domain-value" id="terms-domain-registrar">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="terms-text">Paste Terms & Conditions Text</label>
+                        <textarea id="terms-text" class="textarea-field" placeholder="Paste the complete Terms & Conditions text here..." rows="10"></textarea>
+                        <span class="form-hint">Copy the entire T&C document from the website</span>
+                    </div>
+
+                    <button type="submit" class="btn-analyze">Scan Terms & Conditions</button>
+                </form>
+
+                <div id="terms-results" class="results-container hidden">
+                    <div class="result-card">
+                        <h3>Suspicious Clauses Detected</h3>
+                        <div id="terms-risk-items"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. SSL Data Tab -->
+            <div class="tab-content" id="ssl">
+                <div class="tab-header">
+                    <h2>🔒 SSL Certificate Analysis</h2>
+                    <p>Verify SSL/TLS certificate authenticity and security</p>
+                </div>
+                <form class="analysis-form">
+                    <div class="form-group">
+                        <label for="ssl-url">Website URL</label>
+                        <input type="url" id="ssl-url" class="input-field" placeholder="https://example.com" required onblur="checkDomainAgeForTab(this.value, 'ssl-domain-age')">
+                        <span class="form-hint">Enter the HTTPS URL to check SSL certificate</span>
+                    </div>
+
+                    <!-- Domain Age Results -->
+                    <div id="ssl-domain-age" class="domain-age-container hidden">
+                        <div class="domain-card">
+                            <h3>📅 Domain Information & Age</h3>
+                            <div class="domain-stats">
+                                <div class="domain-stat">
+                                    <span class="domain-label">Domain Age</span>
+                                    <span class="domain-value" id="ssl-domain-age-years">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Creation Date</span>
+                                    <span class="domain-value" id="ssl-domain-created-date">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Expiration Date</span>
+                                    <span class="domain-value" id="ssl-domain-expiry-date">-</span>
+                                </div>
+                                <div class="domain-stat">
+                                    <span class="domain-label">Registrar</span>
+                                    <span class="domain-value" id="ssl-domain-registrar">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ssl-info-grid">
+                        <div class="ssl-info-item">
+                            <label>Certificate Authority</label>
+                            <div class="info-display" id="ssl-ca">-</div>
+                        </div>
+                        <div class="ssl-info-item">
+                            <label>Certificate Status</label>
+                            <div class="info-display" id="ssl-status">-</div>
+                        </div>
+                        <div class="ssl-info-item">
+                            <label>Expiration Date</label>
+                            <div class="info-display" id="ssl-expiry">-</div>
+                        </div>
+                        <div class="ssl-info-item">
+                            <label>Protocol Version</label>
+                            <div class="info-display" id="ssl-protocol">-</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ssl-cert">SSL Certificate Data (Optional)</label>
+                        <textarea id="ssl-cert" class="textarea-field" placeholder="Paste SSL certificate details here if you have them..." rows="8"></textarea>
+                        <span class="form-hint">You can paste the certificate details from browser or certificate viewer</span>
+                    </div>
+
+                    <button type="submit" class="btn-analyze">Verify SSL Certificate</button>
+                </form>
+
+                <div id="ssl-results" class="results-container hidden">
+                    <div class="result-card">
+                        <h3>SSL Certificate Analysis</h3>
+                        <div id="ssl-risk-items"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. Analysis History Tab -->
+            <div class="tab-content" id="history">
+                <div class="tab-header">
+                    <h2>📜 Analysis History</h2>
+                    <p>View all your previous phishing risk analyses saved to the cloud</p>
+                </div>
+                
+                <div class="history-controls">
+                    <button class="btn-secondary" id="btn-sync-history" onclick="loadAnalysisHistory()">
+                        <span>🔄</span> Refresh History
+                    </button>
+                    <button class="btn-danger" id="btn-clear-history" onclick="clearAllHistory()" style="display: none;">
+                        <span>🗑️</span> Clear All
+                    </button>
+                </div>
+
+                <div id="history-list" class="history-list">
+                    <div style="text-align: center; padding: 40px; color: var(--text-light);">
+                        <p>📭 No analysis history yet</p>
+                        <p style="font-size: 0.9em; margin-top: 10px;">Your analyses will appear here once you start analyzing websites</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overall Risk Dashboard -->
+        <div class="dashboard">
+            <h2>📊 Overall Risk Assessment</h2>
+            <div class="risk-dashboard">
+                <div class="risk-circle">
+                    <div class="circle-content">
+                        <div class="circle-percentage" id="overallRiskPercentage">0%</div>
+                        <div class="circle-label">Overall Risk</div>
+                    </div>
+                    <svg class="circle-svg" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" class="circle-background"></circle>
+                        <circle cx="50" cy="50" r="45" class="circle-progress" id="riskCircle"></circle>
+                    </svg>
+                </div>
+
+                <div class="risk-summary">
+                    <div class="summary-item">
+                        <span class="summary-icon">🚨</span>
+                        <div>
+                            <h4>Risk Level</h4>
+                            <p id="riskLevel">No Analysis</p>
+                        </div>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-icon">⚠️</span>
+                        <div>
+                            <h4>Threat Count</h4>
+                            <p id="threatCount">0 Threats Detected</p>
+                        </div>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-icon">✅</span>
+                        <div>
+                            <h4>Recommendation</h4>
+                            <p id="riskRecommendation">Analyze a website to get recommendations</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-reset" onclick="resetAllAnalysis()">Reset All Analysis</button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2026 beforeClick - Stay Safe Online | Phishing Risk Analysis Tool</p>
+    </footer>
+
+    <!-- Firebase Configuration -->
+    <script src="firebase-config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
